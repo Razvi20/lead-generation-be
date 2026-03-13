@@ -1,8 +1,17 @@
 import logging
+import os
 
 from openai import AsyncOpenAI
 
 from app.config import get_settings
+
+try:
+    from langsmith import tracing_context
+    from langsmith.wrappers import wrap_openai
+
+    LANGSMITH_AVAILABLE = True
+except ImportError:
+    LANGSMITH_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +24,23 @@ async def draft_email(
 ) -> str:
     """Generate a personalized cold email using GPT-4o."""
     settings = get_settings()
+
+    if settings.LANGSMITH_API_KEY:
+        os.environ["LANGSMITH_API_KEY"] = settings.LANGSMITH_API_KEY
+    if settings.LANGSMITH_ENDPOINT:
+        os.environ["LANGSMITH_ENDPOINT"] = settings.LANGSMITH_ENDPOINT
+    if settings.LANGSMITH_PROJECT:
+        os.environ["LANGSMITH_PROJECT"] = settings.LANGSMITH_PROJECT
+    os.environ["LANGSMITH_TRACING"] = "true" if settings.LANGSMITH_TRACING else "false"
+
     client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+    if settings.LANGSMITH_TRACING and LANGSMITH_AVAILABLE:
+        client = wrap_openai(client)
+    elif settings.LANGSMITH_TRACING and not LANGSMITH_AVAILABLE:
+        logger.warning(
+            "LangSmith tracing is enabled but 'langsmith' package is not installed. "
+            "Install it to capture OpenAI traces."
+        )
 
     system_prompt = (
         f"You are an expert web development consultant. "
@@ -32,15 +57,27 @@ async def draft_email(
     )
 
     try:
-        response = await client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message},
-            ],
-            max_tokens=300,
-            temperature=0.7,
-        )
+        if settings.LANGSMITH_TRACING and LANGSMITH_AVAILABLE:
+            with tracing_context(enabled=True):
+                response = await client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_message},
+                    ],
+                    max_tokens=300,
+                    temperature=0.7,
+                )
+        else:
+            response = await client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message},
+                ],
+                max_tokens=300,
+                temperature=0.7,
+            )
         return response.choices[0].message.content or ""
     except Exception:
         logger.exception("OpenAI API call failed for business=%s", business_name)
