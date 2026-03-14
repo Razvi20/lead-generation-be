@@ -102,7 +102,7 @@ async def search_text(sector: str, bounds: dict) -> list[dict]:
         },
     }
 
-    field_mask = "places.displayName,places.websiteUri,places.userRatingCount"
+    field_mask = "places.displayName,places.websiteUri,places.userRatingCount,places.rating"
 
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(
@@ -119,11 +119,12 @@ async def search_text(sector: str, bounds: dict) -> list[dict]:
     for place in places:
         website = place.get("websiteUri")
         rating_count = place.get("userRatingCount", 0)
+        rating = place.get("rating", 0)
         display_name = place.get("displayName", {}).get("text", "Unknown")
 
         if not website:
             continue
-        if rating_count >= 10:
+        if rating_count >= 10 and rating >= 4.0:
             continue
 
         filtered.append(
@@ -131,6 +132,7 @@ async def search_text(sector: str, bounds: dict) -> list[dict]:
                 "business_name": display_name,
                 "website": website,
                 "review_count": rating_count,
+                "rating": rating,
             }
         )
 
