@@ -16,6 +16,9 @@ async def run_pipeline(
     bounds: dict,
     portfolio_url: str,
     session_factory: async_sessionmaker,
+    with_email_drafts: bool = True,
+    max_reviews: int = 10,
+    min_rating: int = 4,
 ) -> None:
     """Full lead-generation pipeline: Places → Scrape → AI → DB."""
     try:
@@ -30,7 +33,7 @@ async def run_pipeline(
 
         # Step 1: Google Places searchText
         logger.info("[Job %s] Searching Google Places for '%s'", job_id, sector)
-        businesses = await google_places.search_text(sector, bounds)
+        businesses = await google_places.search_text(sector, bounds, max_reviews, min_rating)
         if not businesses:
             async with session_factory() as session:
                 job = await session.get(Job, job_id)
@@ -59,7 +62,7 @@ async def run_pipeline(
 
             # Step 3a: Generate AI email if we have some text
             ai_draft = ""
-            if body_text.strip():
+            if body_text.strip() and with_email_drafts:
                 logger.info("[Job %s] Drafting email for '%s'", job_id, biz["business_name"])
                 ai_draft = await ai_personalizer.draft_email(
                     body_text=body_text,
@@ -68,12 +71,15 @@ async def run_pipeline(
                     portfolio_url=portfolio_url,
                 )
 
+            else: logger.info("[Job %s] No body text for '%s', skipping AI draft", job_id, biz["business_name"])
+            
             leads_to_save.append(
                 Lead(
                     job_id=job_id,
                     business_name=biz["business_name"],
                     website=biz["website"],
                     email_found=email_found,
+                    rating=biz.get("rating", 0),
                     review_count=biz.get("review_count", 0),
                     ai_email_draft=ai_draft,
                 )

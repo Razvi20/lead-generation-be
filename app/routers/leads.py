@@ -46,6 +46,9 @@ async def generate_leads(req: GenerateLeadsRequest, db: AsyncSession = Depends(g
             bounds=bounds_dict,
             portfolio_url=req.portfolio_url,
             session_factory=async_session,
+            with_email_drafts=req.with_email_drafts,
+            max_reviews=req.max_reviews,
+            min_rating=req.min_rating,
         )
     )
 
@@ -67,6 +70,7 @@ async def get_job_status(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
             website=lead.website,
             email_found=lead.email_found,
             reviews=lead.review_count,
+            rating=lead.rating,
             ai_email_draft=lead.ai_email_draft,
         )
         for lead in job.leads
@@ -95,6 +99,7 @@ async def list_jobs(db: AsyncSession = Depends(get_db)):
                 email_found=lead.email_found,
                 reviews=lead.review_count,
                 ai_email_draft=lead.ai_email_draft,
+                rating=lead.rating,
             )
             for lead in job.leads
         ]

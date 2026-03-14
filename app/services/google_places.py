@@ -81,7 +81,7 @@ async def autocomplete(query: str) -> list[dict]:
     return results
 
 
-async def search_text(sector: str, bounds: dict) -> list[dict]:
+async def search_text(sector: str, bounds: dict, max_reviews: int, min_rating: int) -> list[dict]:
     """Search for businesses in the given bounds using Places searchText.
 
     Returns only businesses with a website and fewer than 10 reviews.
@@ -124,7 +124,7 @@ async def search_text(sector: str, bounds: dict) -> list[dict]:
 
         if not website:
             continue
-        if rating_count >= 10 and rating >= 4.0:
+        if rating_count >= max_reviews and rating >= min_rating:
             continue
 
         filtered.append(

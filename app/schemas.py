@@ -41,6 +41,9 @@ class GenerateLeadsRequest(BaseModel):
     bounds: Bounds
     city: str = Field(..., min_length=1, max_length=256)
     portfolio_url: str = Field(..., min_length=1, max_length=2048)
+    with_email_drafts: bool = True,
+    max_reviews: int = 10
+    min_rating: int = 4
 
 
 class GenerateLeadsResponse(BaseModel):
@@ -55,6 +58,7 @@ class LeadOut(BaseModel):
     website: str
     email_found: str | None
     reviews: int
+    rating: int
     ai_email_draft: str | None
 
 

@@ -47,6 +47,7 @@ class Lead(Base):
     website: Mapped[str] = mapped_column(String(2048))
     email_found: Mapped[str | None] = mapped_column(String(512), nullable=True)
     review_count: Mapped[int] = mapped_column(Integer, default=0)
+    rating: Mapped[Integer] = mapped_column(Integer, default=0)
     ai_email_draft: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
